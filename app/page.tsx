@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Phone, MessageCircle, Mail, Truck, Package, Lock, FileText, ArrowRight, Plane } from 'lucide-react';
 import Link from "next/link";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 
 export default function Home() {
@@ -353,7 +354,7 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="font-semibold mb-1" style={{ color: '#111827' }}>Email</h3>
-                    <p style={{ color: '#666666' }}>janviexpress247@gmail.com</p>
+                    <p style={{ color: '#666666' }}>janvixpress247@gmail.com</p>
                   </div>
                 </a>
               </div>
@@ -430,16 +431,16 @@ export default function Home() {
             <div>
               <h3 className="font-semibold mb-6 text-white">Support</h3>
               <ul className="space-y-3 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Support Portal</a></li>
+                <li><a href="/" className="hover:text-white transition-colors">Contact Us</a></li>
+                <li><a href="/" className="hover:text-white transition-colors">FAQ</a></li>
+                <li><a href="/" className="hover:text-white transition-colors">Support Portal</a></li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold mb-6 text-white">Legal</h3>
               <ul className="space-y-3 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+                <li><a href="/" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="/" className="hover:text-white transition-colors">Terms of Service</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
               </ul>
             </div>

@@ -8,6 +8,15 @@ type TrackingRow = {
   reference_code: string;
   full_name: string | null;
   phone: string | null;
+
+  sender_phone: string | null;
+  sender_email: string | null;
+  receiver_name: string | null;
+  receiver_phone: string | null;
+  receiver_email: string | null;
+  receiver_postal_code: string | null;
+  receiver_address: string | null;
+
   pickup_location: string | null;
   destination_country: string | null;
   package_type: string | null;
@@ -58,8 +67,41 @@ function formatDate(dt: string | null) {
 }
 
 function normalizeRef(s: string) {
-  // Keep this, even though RPC also normalizes — helps user input quality
   return s.trim().replace(/\s+/g, "").toUpperCase();
+}
+
+/** ✅ Frontend masking helpers (Option A) */
+function maskPhone(phone: string | null) {
+  if (!phone) return "—";
+  const p = phone.replace(/\s+/g, "");
+  if (p.length <= 4) return "****";
+  const last4 = p.slice(-4);
+  return `${p.slice(0, 3)}****${last4}`;
+}
+
+function maskEmail(email: string | null) {
+  if (!email) return "—";
+  const e = email.trim();
+  const [user, domain] = e.split("@");
+  if (!domain) return "—";
+  const u = user || "";
+  const maskedUser =
+    u.length <= 2 ? `${u[0] ?? ""}***` : `${u.slice(0, 2)}***${u.slice(-1)}`;
+  return `${maskedUser}@${domain}`;
+}
+
+function shortName(name: string | null) {
+  if (!name) return "—";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1][0]}.`;
+}
+
+/** Don’t show full address publicly */
+function safeAddress(addr: string | null) {
+  if (!addr) return "—";
+  return "Address on file (contact support)";
 }
 
 function Icon({
@@ -74,7 +116,9 @@ function Icon({
     | "phone"
     | "pin"
     | "plane"
-    | "clock";
+    | "clock"
+    | "mail"
+    | "user";
   className?: string;
 }) {
   const common = {
@@ -105,11 +149,7 @@ function Icon({
     case "check":
       return (
         <svg {...common} viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 13l4 4L19 7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       );
     case "dot":
@@ -157,11 +197,7 @@ function Icon({
             strokeLinejoin="round"
             d="M12 21s7-4.4 7-11a7 7 0 10-14 0c0 6.6 7 11 7 11z"
           />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 10a2 2 0 110-4 2 2 0 010 4z"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10a2 2 0 110-4 2 2 0 010 4z" />
         </svg>
       );
     case "plane":
@@ -185,8 +221,23 @@ function Icon({
           />
         </svg>
       );
+    case "mail":
+      return (
+        <svg {...common} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h16v16H4V4z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6l8 7 8-7" />
+        </svg>
+      );
+    case "user":
+      return (
+        <svg {...common} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20 21a8 8 0 10-16 0" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 13a4 4 0 100-8 4 4 0 000 8z" />
+        </svg>
+      );
   }
 }
+
 function StatusTimeline({ status }: { status: string | null }) {
   const currentIndex = useMemo(() => {
     const idx = STATUS_FLOW.indexOf((status || "Pending") as any);
@@ -200,15 +251,10 @@ function StatusTimeline({ status }: { status: string | null }) {
           <p className="text-xs font-semibold uppercase tracking-wider text-black/60">
             Shipment status
           </p>
-          <h3
-            className="mt-1 text-xl md:text-2xl font-bold"
-            style={{ color: BRAND.dark }}
-          >
+          <h3 className="mt-1 text-xl md:text-2xl font-bold" style={{ color: BRAND.dark }}>
             {STATUS_FLOW[currentIndex]}
           </h3>
-          <p className="mt-1 text-sm text-black/70">
-            {STATUS_HELP[STATUS_FLOW[currentIndex]]}
-          </p>
+          <p className="mt-1 text-sm text-black/70">{STATUS_HELP[STATUS_FLOW[currentIndex]]}</p>
         </div>
 
         <span
@@ -222,120 +268,64 @@ function StatusTimeline({ status }: { status: string | null }) {
         </span>
       </div>
 
-      {/* Desktop horizontal timeline */}
-      <div className="mt-6 hidden md:block">
-        <div className="grid grid-cols-6 gap-3">
-          {STATUS_FLOW.map((s, i) => {
-            const done = i < currentIndex;
-            const active = i === currentIndex;
-            return (
-              <div key={s} className="flex flex-col items-center text-center">
+      {/* Vertical stepper */}
+      <div className="mt-6 space-y-6">
+        {STATUS_FLOW.map((s, i) => {
+          const done = i < currentIndex;
+          const active = i === currentIndex;
+
+          return (
+            <div key={s} className="flex items-start gap-4">
+              <div className="relative flex flex-col items-center">
                 <div
-                  className={cls(
-                    "flex h-10 w-10 items-center justify-center rounded-full border",
-                    done && "border-transparent",
-                    active && "ring-4"
-                  )}
+                  className="flex items-center justify-center rounded-full"
                   style={{
+                    width: 30,
+                    height: 30,
                     backgroundColor: done ? BRAND.teal : "white",
-                    borderColor: active ? BRAND.teal : "rgba(0,0,0,0.12)",
+                    border: done
+                      ? `2px solid ${BRAND.teal}`
+                      : active
+                      ? `2px solid ${BRAND.teal}`
+                      : "2px solid rgba(0,0,0,0.20)",
+                    boxShadow: active ? "0 0 0 6px rgba(31,122,140,0.12)" : "none",
                     color: done ? "white" : BRAND.teal,
-                    boxShadow: active
-                      ? "0 0 0 6px rgba(31,122,140,0.12)"
-                      : "none",
                   }}
                 >
                   {done ? (
-                    <Icon name="check" className="h-5 w-5" />
+                    <Icon name="check" className="h-4 w-4" />
                   ) : (
-                    <Icon
-                      name="dot"
-                      className={cls("h-3 w-3", active ? "" : "text-black/30")}
-                    />
-                  )}
-                </div>
-
-                <p
-                  className={cls(
-                    "mt-2 text-xs font-semibold",
-                    active ? "text-black" : "text-black/60"
-                  )}
-                >
-                  {s}
-                </p>
-
-                {i < STATUS_FLOW.length - 1 && (
-                  <div
-                    className="mt-3 h-1 w-full rounded"
-                    style={{
-                      backgroundColor:
-                        i < currentIndex ? BRAND.teal : "rgba(0,0,0,0.10)",
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Mobile vertical timeline */}
-      <div className="mt-6 md:hidden">
-        <div className="space-y-4">
-          {STATUS_FLOW.map((s, i) => {
-            const done = i < currentIndex;
-            const active = i === currentIndex;
-
-            return (
-              <div key={s} className="flex items-start gap-3">
-                <div className="flex flex-col items-center">
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-full border"
-                    style={{
-                      backgroundColor: done ? BRAND.teal : "white",
-                      borderColor: active ? BRAND.teal : "rgba(0,0,0,0.12)",
-                      color: done ? "white" : BRAND.teal,
-                      boxShadow: active
-                        ? "0 0 0 6px rgba(31,122,140,0.12)"
-                        : "none",
-                    }}
-                  >
-                    {done ? (
-                      <Icon name="check" className="h-5 w-5" />
-                    ) : (
-                      <Icon
-                        name="dot"
-                        className={cls("h-3 w-3", active ? "" : "text-black/30")}
-                      />
-                    )}
-                  </div>
-
-                  {i < STATUS_FLOW.length - 1 && (
-                    <div
-                      className="mt-1 h-6 w-[2px] rounded"
+                    <span
+                      className="rounded-full"
                       style={{
-                        backgroundColor:
-                          i < currentIndex ? BRAND.teal : "rgba(0,0,0,0.12)",
+                        width: 8,
+                        height: 8,
+                        backgroundColor: active ? BRAND.teal : "rgba(0,0,0,0.25)",
                       }}
                     />
                   )}
                 </div>
 
-                <div className="flex-1">
-                  <p
-                    className={cls(
-                      "text-sm font-semibold",
-                      active ? "text-black" : "text-black/70"
-                    )}
-                  >
-                    {s}
-                  </p>
-                  <p className="text-xs text-black/60">{STATUS_HELP[s]}</p>
-                </div>
+                {i < STATUS_FLOW.length - 1 && (
+                  <div
+                    style={{
+                      width: 2,
+                      height: 34,
+                      marginTop: 6,
+                      backgroundColor: i < currentIndex ? BRAND.teal : "rgba(0,0,0,0.14)",
+                      borderRadius: 999,
+                    }}
+                  />
+                )}
               </div>
-            );
-          })}
-        </div>
+
+              <div className="flex-1">
+                <p className="text-sm font-bold text-black">{s}</p>
+                <p className="mt-0.5 text-xs text-black/60">{STATUS_HELP[s]}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -354,13 +344,12 @@ export default function TrackPage() {
 
     const code = normalizeRef(ref);
     if (!code || code.length < 6) {
-      setError("Enter a valid reference code (minimum 6 characters).");
+      setError("Enter a valid tracking code (minimum 6 characters).");
       return;
     }
 
     setLoading(true);
     try {
-      // Uses Supabase RPC (recommended). Create function: public.track_shipment(text)
       const { data, error } = await supabase.rpc("track_shipment", {
         p_reference_code: code,
       });
@@ -368,34 +357,37 @@ export default function TrackPage() {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        setError(
-          "No shipment found for that reference code. Please confirm and try again."
-        );
+        setError("No shipment found for that tracking code. Please confirm and try again.");
         return;
       }
 
       setRow(data[0] as TrackingRow);
     } catch (err: any) {
-      setError(
-        err?.message || "Something went wrong while tracking. Please try again."
-      );
+      setError(err?.message || "Something went wrong while tracking. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
+  const senderPhone = row?.sender_phone ?? row?.phone ?? null;
+  const senderEmail = row?.sender_email ?? null;
+
+  /** ✅ Masked public display */
+  const publicSenderPhone = maskPhone(senderPhone);
+  const publicReceiverPhone = maskPhone(row?.receiver_phone ?? null);
+  const publicSenderEmail = maskEmail(senderEmail);
+  const publicReceiverEmail = maskEmail(row?.receiver_email ?? null);
+  const publicReceiverName = shortName(row?.receiver_name ?? null);
+  const publicAddress = safeAddress(row?.receiver_address ?? null);
+
   return (
     <div style={{ backgroundColor: BRAND.cream }} className="min-h-screen">
-      {/* Top bar */}
       <div className="sticky top-0 z-20 border-b border-black/10 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
             <div
               className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{
-                backgroundColor: "rgba(31,122,140,0.12)",
-                color: BRAND.teal,
-              }}
+              style={{ backgroundColor: "rgba(31,122,140,0.12)", color: BRAND.teal }}
               aria-hidden="true"
             >
               <Icon name="box" className="h-5 w-5" />
@@ -426,26 +418,17 @@ export default function TrackPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
         <div className="grid gap-6 md:grid-cols-[1.1fr_.9fr]">
-          {/* Left: Intro + Form */}
           <section className="rounded-2xl border border-black/10 bg-white p-5 md:p-7">
-            <p className="text-xs font-semibold uppercase tracking-wider text-black/60">
-              Track your shipment
-            </p>
-            <h1
-              className="mt-2 text-2xl md:text-3xl font-extrabold"
-              style={{ color: BRAND.dark }}
-            >
-              Enter your reference code to view real-time status.
+            <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Track your shipment</p>
+            <h1 className="mt-2 text-2xl md:text-3xl font-extrabold" style={{ color: BRAND.dark }}>
+              Enter your tracking code to view real-time status.
             </h1>
             <p className="mt-2 text-sm text-black/70">
-              Use the reference code provided after confirmation. This helps you
-              stay updated from dispatch to delivery.
+              Use the tracking code provided after confirmation. This helps you stay updated from dispatch to delivery.
             </p>
 
             <form onSubmit={handleTrack} className="mt-6">
-              <label className="block text-sm font-semibold text-black">
-                Reference Code
-              </label>
+              <label className="block text-sm font-semibold text-black">Tracking Code</label>
 
               <div className="mt-2 flex gap-2">
                 <div className="relative flex-1">
@@ -455,7 +438,7 @@ export default function TrackPage() {
                   <input
                     value={ref}
                     onChange={(e) => setRef(e.target.value)}
-                    placeholder="e.g. JNX-8F3K21"
+                    placeholder="e.g. JX-2026-8F3K21"
                     className="w-full rounded-xl border border-black/10 bg-white px-10 py-3 text-sm font-semibold text-black outline-none ring-0 focus:border-black/20"
                   />
                 </div>
@@ -463,18 +446,13 @@ export default function TrackPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={cls(
-                    "rounded-xl px-6 py-3 text-sm font-semibold transition",
-                    loading && "opacity-70"
-                  )}
+                  className={cls("rounded-xl px-6 py-3 text-sm font-semibold transition", loading && "opacity-70")}
                   style={{ backgroundColor: BRAND.teal, color: "white" }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                      BRAND.tealHover;
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.tealHover;
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                      BRAND.teal;
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.teal;
                   }}
                 >
                   {loading ? "Tracking..." : "Track"}
@@ -486,49 +464,17 @@ export default function TrackPage() {
                   {error}
                 </div>
               )}
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-black/10 bg-black/5 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-black/60">
-                    Coverage
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-black">
-                    Nigeria → UK, USA & Europe
-                  </p>
-                  <p className="mt-1 text-xs text-black/60">
-                    International air cargo with structured updates.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-black/10 bg-black/5 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-black/60">
-                    Support
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-black">
-                    Fast response
-                  </p>
-                  <p className="mt-1 text-xs text-black/60">
-                    If you need help, contact our operations team.
-                  </p>
-                </div>
-              </div>
             </form>
           </section>
 
-          {/* Right: Summary */}
           <section className="rounded-2xl border border-black/10 bg-white p-5 md:p-7">
-            <p className="text-xs font-semibold uppercase tracking-wider text-black/60">
-              Shipment summary
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Shipment summary</p>
 
             {!row ? (
               <div className="mt-4 rounded-2xl border border-black/10 bg-black/5 p-4">
-                <p className="text-sm font-semibold text-black">
-                  No shipment loaded yet
-                </p>
+                <p className="text-sm font-semibold text-black">No shipment loaded yet</p>
                 <p className="mt-1 text-xs text-black/60">
-                  Enter a valid reference code to view shipment details and
-                  status timeline.
+                  Enter a valid tracking code to view shipment details and status timeline.
                 </p>
               </div>
             ) : (
@@ -536,84 +482,66 @@ export default function TrackPage() {
                 <div className="rounded-2xl border border-black/10 bg-black/5 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs text-black/60">Reference</p>
-                      <p className="text-sm font-bold text-black">
-                        {row.reference_code}
-                      </p>
+                      <p className="text-xs text-black/60">Tracking Code</p>
+                      <p className="text-sm font-bold text-black">{row.reference_code}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-black/60">Created</p>
-                      <p className="text-sm font-semibold text-black">
-                        {formatDate(row.created_at)}
-                      </p>
+                      <p className="text-sm font-semibold text-black">{formatDate(row.created_at)}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-black/10 bg-white p-4">
-                    <div className="flex items-center gap-2 text-black/70">
-                      <Icon name="pin" className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wider">
-                        Pickup
-                      </p>
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-black">
-                      {row.pickup_location || "—"}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Pickup</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{row.pickup_location || "—"}</p>
                   </div>
 
                   <div className="rounded-2xl border border-black/10 bg-white p-4">
-                    <div className="flex items-center gap-2 text-black/70">
-                      <Icon name="plane" className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wider">
-                        Destination
-                      </p>
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-black">
-                      {row.destination_country || "—"}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Destination</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{row.destination_country || "—"}</p>
                   </div>
 
                   <div className="rounded-2xl border border-black/10 bg-white p-4">
-                    <div className="flex items-center gap-2 text-black/70">
-                      <Icon name="box" className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wider">
-                        Package
-                      </p>
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-black">
-                      {row.package_type || "—"}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Package</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{row.package_type || "—"}</p>
                   </div>
 
                   <div className="rounded-2xl border border-black/10 bg-white p-4">
-                    <div className="flex items-center gap-2 text-black/70">
-                      <Icon name="phone" className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wider">
-                        Contact
-                      </p>
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-black">
-                      {row.phone || "—"}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Receiver Name</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{publicReceiverName}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Sender Phone</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{publicSenderPhone}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Receiver Phone</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{publicReceiverPhone}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Sender Email</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{publicSenderEmail}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Receiver Email</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{publicReceiverEmail}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Postal Code</p>
+                    <p className="mt-1 text-sm font-semibold text-black">{row.receiver_postal_code || "—"}</p>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-black/10 bg-black/5 p-4">
-                  <div className="flex items-center gap-2 text-black/70">
-                    <Icon name="clock" className="h-4 w-4" />
-                    <p className="text-xs font-semibold uppercase tracking-wider">
-                      Estimated delivery
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-black">
-                    3–7 business days (typical) — varies by destination &
-                    clearance.
-                  </p>
-                  <p className="mt-1 text-xs text-black/60">
-                    For urgent updates, contact our operations team.
-                  </p>
+                <div className="rounded-2xl border border-black/10 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-black/60">Receiver Address</p>
+                  <p className="mt-1 text-sm font-semibold text-black">{publicAddress}</p>
                 </div>
               </div>
             )}
@@ -627,16 +555,12 @@ export default function TrackPage() {
         <div className="mt-6 rounded-2xl border border-black/10 bg-white p-5 md:p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-bold text-black">
-                Need help with your shipment?
-              </p>
+              <p className="text-sm font-bold text-black">Need help with your shipment?</p>
               <p className="text-sm text-black/70">
-                Contact Janvi operations for clarification on status, delivery,
-                or pickup details.
+                Contact Janvi operations for clarification on status, delivery, or pickup details.
               </p>
             </div>
 
-            {/* Replace with real WhatsApp number: https://wa.me/234XXXXXXXXXX */}
             <a
               href="https://wa.me/+2349048236914"
               target="_blank"
