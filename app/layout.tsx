@@ -9,7 +9,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Janvi Xpress',
   description: 'Built by sam',
-  generator: 'Sam',
   icons: {
     icon: [
       {

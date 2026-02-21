@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient"; // adjust if needed
+import { supabase } from "@/lib/supabaseClient"; // adjust if 
+// needed
+export const dynamic = "force-dynamic";
 
 type ShippingRequest = {
   id: string;
@@ -17,7 +19,14 @@ type ShippingRequest = {
   created_at: string;
 };
 
-const STATUS = ["Pending", "Contacted", "Confirmed", "Dispatched", "Delivered"] as const;
+const STATUS = [
+  'Pending',
+  'Contacted',
+  'Confirmed',
+  'Dispatched',
+  'In Transit',
+  'Delivered'
+] as const;
 
 const BRAND = {
   teal: "#1F7A8C",
@@ -32,6 +41,7 @@ const statusColors: Record<string, { bg: string; text: string; dot: string }> = 
   Confirmed: { bg: "#DCFCE7", text: "#166534", dot: "#22C55E" },
   Dispatched: { bg: "#F3E8FF", text: "#6B21A8", dot: "#A855F7" },
   Delivered: { bg: "#D1FAE5", text: "#065F46", dot: "#10B981" },
+  "In Transit": { bg: "#E0F2FE", text: "#075985", dot: "#0284C7" },
 };
 
 function cls(...a: Array<string | false | null | undefined>) {

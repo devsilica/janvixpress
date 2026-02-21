@@ -18,39 +18,56 @@ export default function Home() {
     <main className="w-full overflow-hidden bg-white">
       {/* Navigation Bar */}
       <nav className="sticky top-0 z-50 border-b border-teal/10" style={{ backgroundColor: '#F2EFE6' }}>
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-0.5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-2 lg:px-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-30 h-30 rounded-xl flex items-center justify-center">
+            <div className="w-64 h-64 rounded-xl flex items-center justify-center">
               <Image
                 src="/janvi-logo.png"
                 alt="JANVI XPRESS Logo"
-                width={400}
-                height={400}
+                width={300}
+                height={100}
                 className="w-full h-full object-contain p-1"
               />
             </div>
-            <span className="text-xl font-semibold" style={{ color: '#111827' }}>JANVI XPRESS</span>
+          
           </div>
 
           <div className="flex items-center gap-4">
 
+            {/* ✅ NEW: Track Shipment button */}
+            <Link href="/track">
+              <button
+                className="hidden md:inline-flex px-7 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                style={{ border: '1.5px solid #1F7A8C', color: '#1F7A8C', backgroundColor: 'white' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F2EFE6';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                Track Shipment
+              </button>
+            </Link>
 
-      <Link href="/quote">
-            <button
-              onClick={handleQuote}
-              className="hidden md:inline-flex px-7 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-              style={{ backgroundColor: '#1F7A8C', color: 'white' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#165966';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#1F7A8C';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Get a Quote
-            </button>
+            <Link href="/quote">
+              <button
+                onClick={handleQuote}
+                className="hidden md:inline-flex px-7 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                style={{ backgroundColor: '#1F7A8C', color: 'white' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#165966';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1F7A8C';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                Get a Quote
+              </button>
             </Link>
 
             <button
@@ -68,7 +85,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative py-20 md:py-32 overflow-hidden" style={{ backgroundColor: '#F2EFE6' }}>
+      <section className="relative pt-4 pb-14 md:pt-1 md:pb-20 overflow-hidden" style={{ backgroundColor: '#F2EFE6' }}>
         <div className="absolute inset-0 opacity-30 hidden md:block">
           <Image
             src="/hero-cargo.jpg"
@@ -109,24 +126,37 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <Link href="/quote">
-                <button
-                  onClick={handleQuote}
-                  className="px-8 py-4 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 md:hidden"
-                  style={{ backgroundColor: '#1F7A8C' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#165966';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1F7A8C';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                >
-                  Get a Quote
-                  
-                  <ArrowRight size={20} />
-                </button>
+                  <button
+                    onClick={handleQuote}
+                    className="px-8 py-4 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 md:hidden"
+                    style={{ backgroundColor: '#1F7A8C' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#165966';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1F7A8C';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    Get a Quote
+                    <ArrowRight size={20} />
+                  </button>
                 </Link>
+
+                {/* ✅ NEW: Track Shipment CTA (mobile + desktop) */}
+                <Link href="/track">
+                  <button
+                    className="px-8 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-200"
+                    style={{ border: '2px solid #1F7A8C', color: '#1F7A8C', backgroundColor: 'white' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(31, 122, 140, 0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    Track Shipment
+                    <ArrowRight size={20} />
+                  </button>
+                </Link>
+
                 <button
                   onClick={handleWhatsApp}
                   className="px-8 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-200"
@@ -168,7 +198,7 @@ export default function Home() {
               <p className="text-sm md:text-base" style={{ color: '#666666' }}>Successful Shipments</p>
             </div>
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold mb-2" style={{ color: '#1F7A8C' }}>10+</div>
+              <div className="text-4xl md:text-5xl font-bold mb-2" style={{ color: '#1F7A8C' }}>5+</div>
               <p className="text-sm md:text-base" style={{ color: '#666666' }}>Years Experience</p>
             </div>
             <div className="text-center">
@@ -359,23 +389,22 @@ export default function Home() {
             Get a quote today and experience reliable, professional logistics service
           </p>
           <Link href="/quote">
-          <button
-            onClick={handleQuote}
-            className="px-10 py-4 rounded-xl font-semibold text-white transition-all duration-200 inline-flex items-center gap-2 bg-white"
-            style={{ color: '#1F7A8C' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-3px)';
-              e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            Get Your Free Quote
-            <ArrowRight size={20} />
-            
-          </button>
+            <button
+              onClick={handleQuote}
+              className="px-10 py-4 rounded-xl font-semibold text-white transition-all duration-200 inline-flex items-center gap-2 bg-white"
+              style={{ color: '#1F7A8C' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              Get Your Free Quote
+              <ArrowRight size={20} />
+            </button>
           </Link>
         </div>
       </section>
@@ -389,7 +418,13 @@ export default function Home() {
               <ul className="space-y-3 text-sm text-gray-400">
                 <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Services</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Track Shipment</a></li>
+
+                {/* ✅ UPDATED: Track Shipment points to /track */}
+                <li>
+                  <Link href="/track" className="hover:text-white transition-colors">
+                    Track Shipment
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>
@@ -422,7 +457,6 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center justify-between text-sm text-gray-400">
             <p>© 2026 JANVI XPRESS. All rights reserved.</p>
             <p>Trusted logistics partner for Nigeria, UK, USA & Europe</p>
-            
           </div>
         </div>
       </footer>
