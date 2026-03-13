@@ -30,6 +30,8 @@ type ShippingRequest = {
   created_at: string;
 };
 
+
+
 const STATUS = ["Pending", "Contacted", "Confirmed", "Dispatched", "In Transit", "Delivered"] as const;
 
 const BRAND = {
@@ -82,6 +84,8 @@ function Pill({ active, children, onClick }: { active?: boolean; children: React
     </button>
   );
 }
+
+
 
 function StatusBadge({ status }: { status: string }) {
   const colors = statusColors[status] || statusColors.Pending;
@@ -521,6 +525,8 @@ if (userErr || !user) {
         </div>
 
         {/* CONTENT */}
+
+        
         {loading ? (
           <ShellCard className="p-10 text-center font-extrabold">Loading…</ShellCard>
         ) : (
@@ -570,8 +576,8 @@ if (userErr || !user) {
                         <th className="px-6 py-4 text-xs font-extrabold uppercase" style={{ color: BRAND.teal }}>
                           Update
                         </th>
-                        {/* Waybill column */}
-                        <th className="px-6 py-4 text-xs font-extrabold uppercase" style={{ color: BRAND.teal }}>
+                  
+                        <th className="px-6 py-4 text-xs font-extrabold uppercase" style={{ color: BRAND.teal }}  >
                           Waybill
                         </th>
                       </tr>
