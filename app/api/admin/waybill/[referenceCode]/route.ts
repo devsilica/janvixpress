@@ -4,7 +4,6 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, degrees } from "pdf-lib";
-import bwipjs from "bwip-js";
 import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
