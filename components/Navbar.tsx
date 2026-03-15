@@ -34,7 +34,7 @@ export default function Navbar() {
             href="/track"
             className="bg-[#1F7A8C] text-white px-6 py-2 rounded-lg hover:bg-[#176270] transition"
           >
-            Track Shipment
+            Track
           </Link>
 
           <Link
