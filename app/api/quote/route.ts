@@ -9,9 +9,8 @@ const supabase = createClient(
 );
 
 /* ---------------------------
-   INPUT SANITIZER
+   SANITIZER
 --------------------------- */
-
 function clean(input: unknown) {
   if (typeof input !== "string") return "";
   return sanitizeHtml(input, {
@@ -22,27 +21,25 @@ function clean(input: unknown) {
 
 export async function POST(req: Request) {
   try {
-
     /* ---------------------------
-       RATE LIMITING
+       RATE LIMIT
     --------------------------- */
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+      "127.0.0.1";
 
-    const forwardedFor = req.headers.get("x-forwarded-for");
-    const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
+    const { success: rateOk } = await ratelimit.limit(ip);
 
-    const { success } = await ratelimit.limit(ip);
-
-    if (!success) {
+    if (!rateOk) {
       return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
+        { error: "Too many requests. Try again later." },
         { status: 429 }
       );
     }
 
     /* ---------------------------
-       PARSE REQUEST
+       PARSE BODY
     --------------------------- */
-
     const body = await req.json();
     const { captchaToken, payload } = body;
 
@@ -55,114 +52,57 @@ export async function POST(req: Request) {
 
     if (!payload) {
       return NextResponse.json(
-        { error: "Invalid request payload" },
+        { error: "Invalid payload" },
         { status: 400 }
       );
     }
 
     /* ---------------------------
-       SANITIZE INPUT
+       SANITIZE
     --------------------------- */
-
-    const full_name = clean(payload.full_name);
-    const sender_phone = clean(payload.sender_phone);
-    const sender_email = clean(payload.sender_email);
-    const receiver_name = clean(payload.receiver_name);
-    const receiver_phone = clean(payload.receiver_phone);
-    const receiver_email = clean(payload.receiver_email);
-    const receiver_postal_code = clean(payload.receiver_postal_code);
-    const receiver_address = clean(payload.receiver_address);
-    const pickup_location = clean(payload.pickup_location);
-    const destination_country = clean(payload.destination_country);
-    const package_type = clean(payload.package_type);
-    const reference_code = clean(payload.reference_code);
+    const data = {
+      full_name: clean(payload.full_name),
+      sender_phone: clean(payload.sender_phone),
+      sender_email: clean(payload.sender_email),
+      receiver_name: clean(payload.receiver_name),
+      receiver_phone: clean(payload.receiver_phone),
+      receiver_email: clean(payload.receiver_email),
+      receiver_postal_code: clean(payload.receiver_postal_code),
+      receiver_address: clean(payload.receiver_address),
+      pickup_location: clean(payload.pickup_location),
+      destination_country: clean(payload.destination_country),
+      package_type: clean(payload.package_type),
+      reference_code: clean(payload.reference_code)
+    };
 
     /* ---------------------------
-       SERVER VALIDATION
+       VALIDATION (minimal safe)
     --------------------------- */
-
-    if (!full_name || full_name.length > 100) {
+    if (!data.full_name || !data.sender_phone || !data.sender_email) {
       return NextResponse.json(
-        { error: "Invalid sender name" },
-        { status: 400 }
-      );
-    }
-
-    if (!sender_phone || sender_phone.length < 6) {
-      return NextResponse.json(
-        { error: "Invalid sender phone number" },
-        { status: 400 }
-      );
-    }
-
-    if (!sender_email || !sender_email.includes("@")) {
-      return NextResponse.json(
-        { error: "Invalid sender email" },
-        { status: 400 }
-      );
-    }
-
-    if (!receiver_name || receiver_name.length > 100) {
-      return NextResponse.json(
-        { error: "Invalid receiver name" },
-        { status: 400 }
-      );
-    }
-
-    if (!receiver_phone || receiver_phone.length < 6) {
-      return NextResponse.json(
-        { error: "Invalid receiver phone number" },
-        { status: 400 }
-      );
-    }
-
-    if (!receiver_address || receiver_address.length < 5) {
-      return NextResponse.json(
-        { error: "Invalid receiver address" },
-        { status: 400 }
-      );
-    }
-
-    if (!pickup_location || pickup_location.length < 2) {
-      return NextResponse.json(
-        { error: "Invalid pickup location" },
-        { status: 400 }
-      );
-    }
-
-    if (!destination_country) {
-      return NextResponse.json(
-        { error: "Destination country required" },
-        { status: 400 }
-      );
-    }
-
-    if (!package_type) {
-      return NextResponse.json(
-        { error: "Package type required" },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
     /* ---------------------------
-       CAPTCHA VERIFICATION
+       TURNSTILE VERIFY (FIXED)
     --------------------------- */
+    const formData = new URLSearchParams();
+    formData.append("secret", process.env.TURNSTILE_SECRET_KEY!);
+    formData.append("response", captchaToken);
 
     const verify = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          secret: process.env.TURNSTILE_SECRET_KEY,
-          response: captchaToken
-        })
+        body: formData
       }
     );
 
     const captchaData = await verify.json();
+
+    console.log("TURNSTILE:", captchaData);
 
     if (!captchaData.success) {
       return NextResponse.json(
@@ -172,44 +112,31 @@ export async function POST(req: Request) {
     }
 
     /* ---------------------------
-       SAFE DATABASE INSERT
+       SUPABASE INSERT
     --------------------------- */
-
     const { error } = await supabase
       .from("shipping_requests")
       .insert({
-        full_name,
-        sender_phone,
-        sender_email,
-        receiver_name,
-        receiver_phone,
-        receiver_email,
-        receiver_postal_code,
-        receiver_address,
-        pickup_location,
-        destination_country,
-        package_type,
-        reference_code,
+        ...data,
         status: "Pending"
       });
 
     if (error) {
-      console.error("Database error:", error);
+      console.error("SUPABASE ERROR:", error);
 
-   return NextResponse.json(
-  { error: error.message, details: error },
-  { status: 500 }
-);
+      return NextResponse.json(
+        { error: "Database insert failed" },
+        { status: 500 }
+      );
     }
 
     /* ---------------------------
-       SUCCESS RESPONSE
+       SUCCESS
     --------------------------- */
-
     return NextResponse.json({ success: true });
 
   } catch (err) {
-    console.error("Server error:", err);
+    console.error("SERVER ERROR:", err);
 
     return NextResponse.json(
       { error: "Server error" },
