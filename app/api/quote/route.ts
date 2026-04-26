@@ -196,10 +196,10 @@ export async function POST(req: Request) {
     if (error) {
       console.error("Database error:", error);
 
-      return NextResponse.json(
-        { error: "Failed to save request" },
-        { status: 500 }
-      );
+   return NextResponse.json(
+  { error: error.message, details: error },
+  { status: 500 }
+);
     }
 
     /* ---------------------------
