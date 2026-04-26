@@ -40,7 +40,16 @@ export async function POST(req: Request) {
     /* ---------------------------
        PARSE BODY
     --------------------------- */
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Invalid request format" },
+        { status: 400 }
+      );
+    }
+
     const { captchaToken, payload } = body;
 
     if (!captchaToken) {
@@ -58,8 +67,8 @@ export async function POST(req: Request) {
     }
 
     /* ---------------------------
-       SANITIZE
-    --------------------------- */
+       SANITIZE INPUT
+--------------------------- */
     const data = {
       full_name: clean(payload.full_name),
       sender_phone: clean(payload.sender_phone),
@@ -76,8 +85,8 @@ export async function POST(req: Request) {
     };
 
     /* ---------------------------
-       VALIDATION (minimal safe)
-    --------------------------- */
+       BASIC VALIDATION
+--------------------------- */
     if (!data.full_name || !data.sender_phone || !data.sender_email) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -86,25 +95,46 @@ export async function POST(req: Request) {
     }
 
     /* ---------------------------
-       TURNSTILE VERIFY (FIXED)
-    --------------------------- */
+       TURNSTILE VERIFY (HARDENED)
+--------------------------- */
+    const secret = process.env.TURNSTILE_SECRET_KEY;
+
+    if (!secret) {
+      console.error("TURNSTILE_SECRET_KEY missing");
+      return NextResponse.json(
+        { error: "Server captcha misconfiguration" },
+        { status: 500 }
+      );
+    }
+
     const formData = new URLSearchParams();
-    formData.append("secret", process.env.TURNSTILE_SECRET_KEY!);
+    formData.append("secret", secret);
     formData.append("response", captchaToken);
 
-    const verify = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      {
-        method: "POST",
-        body: formData
-      }
-    );
+    let verify;
+    let captchaData;
 
-    const captchaData = await verify.json();
+    try {
+      verify = await fetch(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        {
+          method: "POST",
+          body: formData
+        }
+      );
 
-    console.log("TURNSTILE:", captchaData);
+      captchaData = await verify.json();
+    } catch (err) {
+      console.error("TURNSTILE FETCH ERROR:", err);
+      return NextResponse.json(
+        { error: "Captcha service unavailable" },
+        { status: 503 }
+      );
+    }
 
-    if (!captchaData.success) {
+    console.log("TURNSTILE RESPONSE:", captchaData);
+
+    if (!captchaData || captchaData.success !== true) {
       return NextResponse.json(
         { error: "Captcha verification failed" },
         { status: 403 }
@@ -113,7 +143,7 @@ export async function POST(req: Request) {
 
     /* ---------------------------
        SUPABASE INSERT
-    --------------------------- */
+--------------------------- */
     const { error } = await supabase
       .from("shipping_requests")
       .insert({
@@ -131,15 +161,18 @@ export async function POST(req: Request) {
     }
 
     /* ---------------------------
-       SUCCESS
-    --------------------------- */
+       SUCCESS RESPONSE
+--------------------------- */
     return NextResponse.json({ success: true });
 
-  } catch (err) {
-    console.error("SERVER ERROR:", err);
+  } catch (err: any) {
+    console.error("UNEXPECTED SERVER ERROR:", err);
 
     return NextResponse.json(
-      { error: "Server error" },
+      {
+        error: "Server error",
+        debug: err?.message || "unknown"
+      },
       { status: 500 }
     );
   }
