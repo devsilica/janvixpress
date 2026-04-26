@@ -20,7 +20,9 @@ function clean(input: unknown) {
 }
 
 export async function POST(req: Request) {
-  try {
+  try { 
+
+    console.log("🔥 /api/quote HIT");
     /* ---------------------------
        RATE LIMIT
     --------------------------- */
